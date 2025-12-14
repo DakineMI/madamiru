@@ -8,12 +8,7 @@ use iced::{
 use iced_moving_picture::{apng, gif};
 
 #[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-type VideoPipeline = gstreamer::Pipeline;
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-type VideoPipeline = ();
+use gstreamer::prelude::ElementExtManual;
 
 use crate::{
     gui::{
@@ -36,6 +31,8 @@ const IMAGE_STEP: Duration = Duration::from_secs(2);
 const AUDIO_STEP: Duration = Duration::from_secs(10);
 #[cfg(feature = "video")]
 const VIDEO_STEP: Duration = Duration::from_secs(10);
+#[cfg(feature = "video")]
+const VIDEO_SEEK_ACCURATE: bool = false;
 
 fn timestamps<'a>(current: Duration, total: Duration) -> Element<'a> {
     let current = current.as_secs();
@@ -55,7 +52,6 @@ fn timestamps<'a>(current: Duration, total: Duration) -> Element<'a> {
 }
 
 #[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
 fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_player::Error> {
     // Based on `iced_video_player::Video::new`,
     // but without a text sink so that the built-in subtitle functionality triggers.
@@ -71,7 +67,7 @@ fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_pl
         uri.as_str()
     );
     let pipeline = gst::parse::launch(pipeline.as_ref())?
-        .downcast::<VideoPipeline>()
+        .downcast::<gstreamer::Pipeline>()
         .map_err(|_| iced_video_player::Error::Cast)?;
 
     let video_sink: gst::Element = pipeline.property("video-sink");
@@ -82,134 +78,6 @@ fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_pl
     let video_sink = video_sink.downcast::<gst_app::AppSink>().unwrap();
 
     iced_video_player::Video::from_gst_pipeline(pipeline, video_sink, None)
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn build_video(uri: &url::Url) -> Result<iced_video_player::Video, iced_video_player::Error> {
-    iced_video_player::Video::new(uri)
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn get_video_pipeline(video: &iced_video_player::Video) -> VideoPipeline {
-    video.pipeline()
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn get_video_pipeline(_video: &iced_video_player::Video) -> VideoPipeline {
-    ()
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn get_video_duration(pipeline: &VideoPipeline) -> Option<gstreamer::ClockTime> {
-    use gstreamer::prelude::ElementExtManual;
-
-    pipeline.query_duration::<gstreamer::ClockTime>()
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn get_video_duration(_pipeline: &VideoPipeline) -> Option<gstreamer::ClockTime> {
-    None
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn get_video_position(pipeline: &VideoPipeline, _video: &iced_video_player::Video) -> Option<Duration> {
-    use gstreamer::prelude::ElementExtManual;
-
-    let clock_time = pipeline.query_position::<gstreamer::ClockTime>()?;
-    Some(Duration::from_nanos(clock_time.nseconds()))
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn get_video_position(_pipeline: &VideoPipeline, video: &iced_video_player::Video) -> Option<Duration> {
-    Some(video.position())
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn build_video_player(
-    video: &iced_video_player::Video,
-    grid_id: grid::Id,
-    player_id: Id,
-    content_fit: ContentFit,
-) -> Element {
-    iced_video_player::VideoPlayer::new(video)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .content_fit(content_fit.into())
-        .on_end_of_stream(Message::Player {
-            grid_id,
-            player_id,
-            event: Event::EndOfStream,
-        })
-        .on_new_frame(Message::Player {
-            grid_id,
-            player_id,
-            event: Event::NewFrame,
-        })
-        .into()
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn build_video_player(
-    video: &iced_video_player::Video,
-    grid_id: grid::Id,
-    player_id: Id,
-    _content_fit: ContentFit,
-) -> Element {
-    iced_video_player::VideoPlayer::new(video)
-        .on_end_of_stream(Message::Player {
-            grid_id,
-            player_id,
-            event: Event::EndOfStream,
-        })
-        .on_new_frame(Message::Player {
-            grid_id,
-            player_id,
-            event: Event::NewFrame,
-        })
-        .into()
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn mute_video(video: &mut iced_video_player::Video, muted: bool) {
-    video.set_muted(muted);
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn mute_video(_video: &mut iced_video_player::Video, _muted: bool) {
-    // Panic: `property 'mute' of type 'GstPipeline' not found`
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn set_video_volume(video: &mut iced_video_player::Video, volume: f32) {
-    video.set_volume(volume as f64);
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn set_video_volume(_video: &mut iced_video_player::Video, _volume: f32) {}
-
-#[cfg(feature = "video")]
-#[realia::dep_since("madamiru", "iced_video_player", "0.6.0")]
-fn seek_video(video: &mut iced_video_player::Video, position: Duration) {
-    let _ = video.seek(position, false);
-}
-
-#[cfg(feature = "video")]
-#[realia::dep_before("madamiru", "iced_video_player", "0.6.0")]
-fn seek_video(video: &mut iced_video_player::Video, position: Duration) {
-    let _ = video.seek(position);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -432,7 +300,7 @@ pub enum Player {
     Video {
         media: Media,
         video: iced_video_player::Video,
-        pipeline: VideoPipeline,
+        pipeline: gstreamer::Pipeline,
         position: Duration,
         duration: Duration,
         paused: bool,
@@ -554,7 +422,7 @@ impl Player {
                 Ok(video) => Ok(Self::Video {
                     media: media.clone(),
                     duration: video.duration(),
-                    pipeline: get_video_pipeline(&video),
+                    pipeline: video.pipeline(),
                     video,
                     position: Duration::ZERO,
                     paused: playback.paused,
@@ -576,9 +444,9 @@ impl Player {
         let mut video = build_video(&url::Url::from_file_path(source.as_std_path_buf()?).map_err(|_| Error::Url)?)?;
 
         video.set_paused(playback.paused);
-        mute_video(&mut video, playback.muted);
+        video.set_muted(playback.muted);
         if !playback.muted {
-            set_video_volume(&mut video, playback.volume);
+            video.set_volume(playback.volume as f64);
         }
 
         Ok(video)
@@ -703,7 +571,7 @@ impl Player {
                 ..
             } => {
                 *position = Duration::ZERO;
-                seek_video(video, *position);
+                let _ = video.seek(*position, VIDEO_SEEK_ACCURATE);
                 *paused = false;
                 video.set_paused(false);
             }
@@ -963,7 +831,7 @@ impl Player {
             Self::Video { pipeline, duration, .. } => {
                 // If the video is still being downloaded/written,
                 // then we want to get the latest total duration.
-                if let Some(clock_time) = get_video_duration(pipeline) {
+                if let Some(clock_time) = pipeline.query_duration::<gstreamer::ClockTime>() {
                     *duration = Duration::from_nanos(clock_time.nseconds());
                 }
 
@@ -1503,27 +1371,27 @@ impl Player {
                     None
                 }
                 Event::SetMute(flag) => {
-                    mute_video(video, flag);
+                    video.set_muted(flag);
                     if !flag {
-                        set_video_volume(video, playback.volume);
+                        video.set_volume(playback.volume as f64);
                     }
                     Some(Update::MuteChanged)
                 }
                 Event::SetVolume(volume) => {
                     if !playback.muted {
-                        set_video_volume(video, volume);
+                        video.set_volume(volume as f64);
                     }
                     None
                 }
                 Event::Seek(offset) => {
                     *dragging = true;
                     *position = offset;
-                    seek_video(video, *position);
+                    let _ = video.seek(*position, VIDEO_SEEK_ACCURATE);
                     Update::relative_position_changed(offset, *duration)
                 }
                 Event::SeekRelative(offset) | Event::SeekRandomRelative(offset) => {
                     *position = Duration::from_secs_f64(duration.as_secs_f64() * offset);
-                    seek_video(video, *position);
+                    let _ = video.seek(*position, VIDEO_SEEK_ACCURATE);
                     None
                 }
                 Event::SeekStop => {
@@ -1533,18 +1401,18 @@ impl Player {
                 Event::SeekRandom => {
                     use rand::Rng;
                     *position = Duration::from_secs_f64(rand::rng().random_range(0.0..duration.as_secs_f64()));
-                    seek_video(video, *position);
+                    let _ = video.seek(*position, VIDEO_SEEK_ACCURATE);
                     Update::relative_position_changed(*position, *duration)
                 }
                 Event::Step(step) => {
                     *position = step.compute(*position, *duration, VIDEO_STEP);
-                    seek_video(video, *position);
+                    let _ = video.seek(*position, VIDEO_SEEK_ACCURATE);
                     Some(Update::Step(step))
                 }
                 Event::EndOfStream => (!video.looping()).then_some(Update::EndOfStream),
                 Event::NewFrame => {
-                    if let Some(new_position) = get_video_position(pipeline, video) {
-                        *position = new_position;
+                    if let Some(clock_time) = pipeline.query_position::<gstreamer::ClockTime>() {
+                        *position = Duration::from_nanos(clock_time.nseconds());
                     }
                     None
                 }
@@ -2520,7 +2388,22 @@ impl Player {
             } => {
                 let overlay = self.overlay(viewport, obscured, *hovered || selected || *dragging);
 
-                let body = Container::new(build_video_player(video, grid_id, player_id, content_fit))
+                let player = iced_video_player::VideoPlayer::new(video)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .content_fit(content_fit.into())
+                    .on_end_of_stream(Message::Player {
+                        grid_id,
+                        player_id,
+                        event: Event::EndOfStream,
+                    })
+                    .on_new_frame(Message::Player {
+                        grid_id,
+                        player_id,
+                        event: Event::NewFrame,
+                    });
+
+                let body = Container::new(player)
                     .align_x(Alignment::Center)
                     .align_y(Alignment::Center)
                     .width(Length::Fill)
