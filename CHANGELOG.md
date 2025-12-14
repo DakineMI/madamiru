@@ -1,3 +1,8 @@
+## Unreleased
+
+* Fixed:
+  * Crash when using the left arrow key to step earlier than the start of the media.
+
 ## v0.4.0 (2025-12-12)
 
 * Added:

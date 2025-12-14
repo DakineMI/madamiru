@@ -401,7 +401,7 @@ pub enum Step {
 impl Step {
     pub fn compute(&self, position: Duration, duration: Duration, size: Duration) -> Duration {
         match self {
-            Step::Earlier => (position - size).max(Duration::ZERO),
+            Step::Earlier => position.saturating_sub(size),
             Step::Later => (position + size).min(duration),
         }
     }
