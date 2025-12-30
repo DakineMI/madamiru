@@ -2,7 +2,7 @@
 name = "madamiru"
 version = "0.4.1"
 authors = ["mtkennerly <mtkennerly@gmail.com>"]
-edition = "2021"
+edition = "2024"
 description = "Dynamic multi-multimedia player"
 repository = "https://github.com/mtkennerly/madamiru"
 readme = "README.md"

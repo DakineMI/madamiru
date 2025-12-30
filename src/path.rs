@@ -1,3 +1,4 @@
+use schemars;
 use std::sync::{Arc, Mutex};
 
 use itertools::Itertools;
@@ -825,8 +826,8 @@ impl schemars::JsonSchema for StrictPath {
         "FilePath".to_string()
     }
 
-    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        String::json_schema(gen)
+    fn json_schema(r#gen: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+        String::json_schema(r#gen)
     }
 
     fn is_referenceable() -> bool {

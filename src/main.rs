@@ -18,7 +18,7 @@ mod testing;
 
 use crate::{
     gui::Flags,
-    prelude::{app_dir, CONFIG_DIR, VERSION},
+    prelude::{CONFIG_DIR, VERSION, app_dir},
 };
 
 /// The logger handle must be retained until the application closes.
@@ -80,7 +80,10 @@ fn prepare_panic_hook(handle: Option<flexi_logger::LoggerHandle>) {
 
 fn prepare_winit() {
     if std::env::var("WGPU_POWER_PREF").is_err() {
-        std::env::set_var("WGPU_POWER_PREF", "high");
+        // set_var is now unsafe, so wrap in unsafe block
+        unsafe {
+            std::env::set_var("WGPU_POWER_PREF", "high");
+        }
     }
 }
 
@@ -132,7 +135,7 @@ fn prepare_winit() {
 unsafe fn detach_console() {
     use windows::Win32::{
         Foundation::HANDLE,
-        System::Console::{FreeConsole, SetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
+        System::Console::{FreeConsole, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, SetStdHandle},
     };
 
     fn tell(msg: &str) {
